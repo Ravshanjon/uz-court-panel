@@ -11,6 +11,7 @@ use App\Models\User;
 use Filament\Actions;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ImportAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 
 
@@ -21,17 +22,28 @@ class ListJudges extends ListRecords
     {
         parent::mount();
 
-        $user = auth()->user();
+        if (auth()->user()->hasRole('judges')) {
+            $judge = \App\Models\Judges::where('pinfl', auth()->user()->pinfl)->first();
 
-        if ($user && $user->hasRole('panel_user') && $user->pinfl) {
-            $judge = \App\Models\Judges::where('pinfl', $user->pinfl)->first();
-
-            if ($judge) {
-                $this->redirectRoute('filament.admin.resources.judges.view', ['record' => $judge->id]);
+            if (! $judge) {
+                Notification::make()
+                    ->danger()
+                    ->title('Маълумот топилмади')
+                    ->body('Сизга тегишли маълумот базада мавжуд эмас.')
+                    ->send();
+                $this->redirect('/');
+                return;
             }
-        }
-    }
 
+            // Faqat oddiy sudya bo‘lsa (masalan, position_category_id == 5) redirect qilinsin
+            if ($judge->position_category_id == 5) {
+                $this->redirect(JudgesResource::getUrl('view', ['record' => $judge->getKey()]));
+            }
+
+            // Sud raisi bo‘lsa (masalan, position_category_id == 1) → hech narsa qilinmaydi
+        }
+
+    }
     protected function getHeaderActions(): array
     {
         return [

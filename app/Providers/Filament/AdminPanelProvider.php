@@ -46,7 +46,7 @@ class AdminPanelProvider extends PanelProvider
         Filament::serving(function () {
 
             $user = auth()->user();
-            if ($user && $user->hasRole('panel_user') && $user->pinfl) {
+            if ($user && $user->hasRole('Malaka') && $user->pinfl) {
                 $judge = \App\Models\Judges::where('pinfl', $user->pinfl)->first();
 
                 if ($judge && request()->routeIs('filament.admin.pages.dashboard')) {
@@ -79,9 +79,8 @@ class AdminPanelProvider extends PanelProvider
             }
         });
         return $panel
-            ->default()
             ->id('admin')
-            ->path('/admin')
+            ->path('/')
             ->login()
             ->profile()
             ->colors([
@@ -97,7 +96,7 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
 
             ])
-
+            ->favicon(asset('image/favicon.png'))
             ->collapsibleNavigationGroups(true)
             ->middleware([
                 EncryptCookies::class,
@@ -112,12 +111,6 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 FilamentApexChartsPlugin::make(),
-                FilamentShieldPlugin::make(),
-                FilamentSpatieLaravelBackupPlugin::make()
-                    ->usingPage(Backups::class)
-
-            ])
-            ->plugins([
                 FilamentShieldPlugin::make()
                     ->gridColumns([
                         'default' => 1,
@@ -134,8 +127,10 @@ class AdminPanelProvider extends PanelProvider
                         'default' => 1,
                         'sm' => 2,
                     ]),
+                FilamentSpatieLaravelBackupPlugin::make()
+                    ->usingPage(Backups::class),
+                FilamentSpatieLaravelBackupPlugin::make()->authorize(fn (): bool => auth()->user()?->hasRole('super_admin'))
             ])
-            ->plugin(FilamentSpatieLaravelBackupPlugin::make()->authorize(fn (): bool => auth()->user()?->hasRole('super_admin')))
             ->maxContentWidth('full')
             ->brandLogo(fn() => view('filament.admin.logo'))
             ->brandName('Судьялар олий кенгаши')

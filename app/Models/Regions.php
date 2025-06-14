@@ -30,6 +30,10 @@ class Regions extends Model
     {
         return $this->hasMany(Appeal::class);
     }
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
 
 
 }

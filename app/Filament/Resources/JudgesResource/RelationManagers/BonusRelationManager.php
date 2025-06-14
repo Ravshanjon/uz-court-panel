@@ -19,7 +19,10 @@ use Illuminate\Support\Facades\Log;
 class BonusRelationManager extends RelationManager
 {
     protected static string $relationship = 'bonusAssignments';
-
+    public function getTableHeading(): string
+    {
+        return 'Бонус баллар';
+    }
     public function form(Form $form): Form
     {
         return $form
@@ -86,7 +89,11 @@ class BonusRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make()->modalHeading('')->label('+')
+                Tables\Actions\CreateAction::make()
+                    ->label('+')
+                    ->color('gray')
+                    ->size('sm')
+                    ->modalHeading('')
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

@@ -16,4 +16,6 @@ class CourtType extends Model
     {
         return $this->hasMany(Establishment::class);
     }
+
+
 }

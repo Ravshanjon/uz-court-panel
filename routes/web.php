@@ -14,6 +14,7 @@ use Maatwebsite\Excel\Facades\Excel;
 Route::get('/judges/public/{judge}', function (\App\Models\Judges $judge) {
     return view('judges.public', ['judge' => $judge]);
 })->name('judges.public');
+Route::get('/test-judge', [JudgesController::class, 'testJudgeStage']);
 
 Route::post('/ask', [OpenAIController::class, 'handle']);
 
@@ -37,3 +38,5 @@ Route::get('/export/desipline', function () {
 });
 Route::get('/statistics/download', [StatisticsController::class, 'download'])->name('statistics.download');
 
+Route::get('/compare-judges/pdf/{judgeAId}/{judgeBId}', [PDFExportController::class, 'generate'])
+    ->name('compare.judges.pdf');

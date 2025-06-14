@@ -7,14 +7,17 @@ use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\Judges;
 use App\Models\User;
 use Filament\Forms;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserResource extends Resource
 {
@@ -28,21 +31,27 @@ class UserResource extends Resource
     public static function form(Form $form): Form
     {
         return $form
-
             ->schema([
+
+
                 Forms\Components\Card::make()->schema([
+                    Forms\Components\Grid::make(2)->schema([
+                        Select::make('type_of_users_id')
+                            ->relationship('typeOfUser', 'name') // ← bu method nomi modeldagi bilan aynan bir xil bo‘lishi kerak
+                            ->label('Фойдалувчи тури'),
+
+
+                        Select::make('position_categories_id')
+                            ->relationship('position_categories', 'name')
+                            ->label('Лавозим тоифаси')
+                            ->preload()
+                            ->searchable(),
+                    ]),
+
                     Forms\Components\Grid::make(4)->schema([
-                        TextInput::make('region_id')
-                            ->label('Ҳудуд')
-                            ->visible(fn($get) => $get('role') === 'Фойдаланувчи'),
 
                         TextInput::make('pinfl')
-                            ->label('ПИНФЛ')
-                            ->visible(fn($get) => $get('role') === 'Фойдаланувчи'),
-
-                        TextInput::make('email')
-                            ->label('Email')
-                            ->visible(fn($get) => $get('role') === 'Фойдаланувчи'),
+                            ->label('ПИНФЛ'),
 
                         TextInput::make('number_code')
                             ->label('Kod')
@@ -50,30 +59,54 @@ class UserResource extends Resource
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $judge = Judges::where('codes', $state)->first();
                                 if ($judge) {
-                                    $set('name', $judge->first_name);
+                                    $set('name', $judge->middle_name . ' ' . $judge->first_name . ' ' . $judge->last_name);
                                     $set('pinfl', $judge->pinfl);
-                                    $set('birth_date', $judge->birth_date);
+                                    $set('brith_date', $judge->birth_date);
+                                    $set('judge_id', $judge->id);
+
                                 } else {
                                     $set('name', null);
                                     $set('pinfl', null);
-                                    $set('birth_date', null);
+                                    $set('brith_date', null);
+                                    $set('judge_id', null);
+
                                 }
                             }),
 
                         Forms\Components\TextInput::make('name')
                             ->reactive()
                             ->unique(ignoreRecord: true),
+                        Forms\Components\DatePicker::make('brith_date')->label('Туғилган санаси')
+                            ->date('d.m.Y'),
 
-                        TextInput::make('pinfl')
-                            ->reactive(),
 
-                        Forms\Components\TextInput::make('email'),
+                        TextInput::make('email')
+                            ->label('Email')
+                            ->default(function () {
+                                do {
+                                    $email = 'sudya' . rand(1000, 9999) . '@gmail.com';
+                                } while (User::where('email', $email)->exists());
 
-                        Forms\Components\TextInput::make('password')
-                            ->dehydrateStateUsing(fn($state) => Hash::make($state))
-                            ->password('password')
+                                return $email;
+                            })
+                            ->required()
+                            ->unique(ignoreRecord: true),
+
+
+                        TextInput::make('password')
+                            ->label('Parol')
+                            ->password()
+                            ->revealable()
+                            ->dehydrateStateUsing(fn($state) => \Illuminate\Support\Facades\Hash::make($state)) // 🔐 Bcrypt
                             ->unique(ignoreRecord: true)
-                            ->revealable(),
+                            ->extraAttributes(['readonly' => true])
+                            ->suffixAction(
+                                \Filament\Forms\Components\Actions\Action::make('generate')
+                                    ->label('Yaratish')
+                                    ->action(fn($state, callable $set) => $set('password', Str::random(10))) // bu holatda xam 10 belgili random parol
+                                    ->color('success')
+                                    ->icon('heroicon-o-shield-check')
+                            ),
 
                         Forms\Components\Select::make('region')
                             ->relationship('region', 'name')
@@ -85,10 +118,6 @@ class UserResource extends Resource
                             ->preload()
                             ->searchable(),
 
-//                        Forms\Components\Select::make('position')
-//                            ->relationship('position_category', 'name')
-//                            ->label('Лавозим номи')
-
                     ])
                 ])
 
@@ -99,9 +128,23 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('region_id.name'),
-                Tables\Columns\TextColumn::make('name')->searchable(),
-                Tables\Columns\BadgeColumn::make('roles.name'),
+                Tables\Columns\TextColumn::make('judge_id'),
+
+                Tables\Columns\TextColumn::make('region.name')
+                    ->label('Вилоят')
+                    ->sortable()
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('name')
+                    ->label('ФИШ')
+                    ->sortable()
+                    ->searchable(),
+
+                Tables\Columns\BadgeColumn::make('roles.name')
+                    ->label('Роллар'),
+            ]) ->groups([
+                Group::make('region.name')->label('Bилоятлар')
+                    ->collapsible(),
             ])
             ->filters([
                 //
@@ -129,6 +172,8 @@ class UserResource extends Resource
             'index' => Pages\ListUsers::route('/'),
             'create' => Pages\CreateUser::route('/create'),
             'edit' => Pages\EditUser::route('/{record}/edit'),
+            'region-wise' => Pages\RegionWiseJudges::route('/regions'),
+
         ];
     }
 }

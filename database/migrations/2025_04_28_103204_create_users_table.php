@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -20,8 +19,11 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('passport')->nullable();
             $table->string('pinfl')->nullable();
+            $table->date('brith_date')->nullable();
+            $table->foreignId('position_categories_id')->nullable()->constrained('position_categories')->cascadeOnDelete();
+            $table->foreignId('type_of_users_id')->nullable()->constrained('type_of_users')->cascadeOnDelete();
+            $table->foreignId('regions_id')->nullable()->constrained('regions')->cascadeOnDelete();
             $table->string('password');
-            $table->foreignId('region_id')->nullable()->constrained('regions')->cascadeOnDelete();
             $table->rememberToken();
             $table->timestamps();
         });

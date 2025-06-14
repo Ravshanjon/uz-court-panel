@@ -19,4 +19,8 @@ class CourtSpeciality extends Model
     public function judges_stage(){
         return $this->hasMany(Judges_Stages::class);
     }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

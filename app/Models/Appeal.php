@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\JudgeRatingCalculator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,7 @@ class Appeal extends Model
         'judge_id',
         'region_id',
         'reasons_id',
+        'group_id',
         'score',
         'instances_id',
         'establishment_id',
@@ -64,12 +66,12 @@ class Appeal extends Model
 
     public function jobCategory()
     {
-        return $this->belongsTo(JobCategory::class,'job_category_id');
+        return $this->belongsTo(JobCategory::class, 'job_category_id');
     }
 
     public function region()
     {
-        return $this->belongsTo(Regions::class,'region_id');
+        return $this->belongsTo(Regions::class, 'region_id');
     }
 
 

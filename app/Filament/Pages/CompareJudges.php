@@ -15,7 +15,6 @@ class CompareJudges extends Page
     public ?string $judgeA = null;
     public ?string $judgeB = null;
 
-    // 🔹 Form schema (2 ta Select)
     protected function getFormSchema(): array
     {
         return [
@@ -69,33 +68,37 @@ class CompareJudges extends Page
 
         return [
             'labels' => [
-                'Сифат',
-                'Одоб',
-                'Хизмат',
-                'Тил',
+                'Умумий рейтиги',
+                'Суд қарорларининг сифати',
+                'Судьянинг масьсуляти',
+                'Хизмат текшируви',
+                'Чет тили',
                 'Қўшимча',
-                'Бошқа',
+
             ],
             'judgeA' => [
+                $judgeA?->rating ?? 0,
                 $judgeA?->quality_score ?? 0,
-                $judgeA?->etiquette_score ?? 0,
                 $judgeA?->ethics_score ?? 0,
+                $judgeA?->etiquette_score ?? 0,
                 $judgeA?->foreign_language_bonus ?? 0,
                 $judgeA?->adding_rating ?? 0,
-                $judgeA?->rating ?? 0,
+
+
             ],
             'judgeB' => [
+                $judgeB?->rating ?? 0,
                 $judgeB?->quality_score ?? 0,
-                $judgeB?->etiquette_score ?? 0,
                 $judgeB?->ethics_score ?? 0,
+                $judgeB?->etiquette_score ?? 0,
                 $judgeB?->foreign_language_bonus ?? 0,
                 $judgeB?->adding_rating ?? 0,
-                $judgeB?->rating ?? 0,
+
             ],
         ];
     }
 
-    // 🔹 Foiz progress va g‘olib aniqlovchi property
+
     public function getComparisonStatsProperty(): array
     {
         $judgeA = $this->getJudgeAData();
@@ -126,5 +129,9 @@ class CompareJudges extends Page
             'judgeB' => ['percent' => round($scoreB)],
             'winner' => $scoreA > $scoreB ? 'A' : ($scoreB > $scoreA ? 'B' : 'draw'),
         ];
+    }
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('super_admin');
     }
 }

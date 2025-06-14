@@ -4,6 +4,7 @@ namespace App\Filament\Imports;
 
 use App\Models\CourtName;
 use App\Models\Establishment;
+use App\Models\Positions;
 use App\Models\Regions;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,7 +15,6 @@ use Illuminate\Support\Facades\Log;
 
 class EstablishedImporter implements ShouldQueue
 {
-
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(public $chunk, public $file)
@@ -31,62 +31,87 @@ class EstablishedImporter implements ShouldQueue
         ];
 
         foreach ($this->chunk as $row) {
-            // number_state
-            $numberState = intval($row['number_state']);
+            $numberState = intval($row['number_state'] ?? 0);
 
-            // region_id (null bo‘lishi mumkin)
+            $regionMapping = [
+                'Фарғона вилояти' => 3,
+                'Тошкент вилояти' => 14,
+                'Тошкент шаҳри' => 13,
+                'Самарқанд вилояти' => 10,
+                'Қашқадарё вилояти' => 8,
+                'Сурхондарё вилояти' => 12,
+                'Жиззах вилояти' => 4,
+                'Андижон вилояти' => 1,
+                'Бухоро вилояти' => 2,
+                'Қорақалпоғистон Республикаси' => 9,
+                'Навоий вилояти' => 7,
+                'Сирдарё вилояти' => 11,
+                'Наманган вилояти' => 6,
+                'Хоразм вилояти' => 5,
+            ];
+
+            $regionName = trim(mb_convert_kana($row['region_name'] ?? '', 's'));
+
+            $regionId = $regionMapping[$regionName] ?? null;
+
+
             $regionId = null;
-            if (!empty(trim($row['region_name'] ?? ''))) {
-                $regionName = trim($row['region_name']);
-                $region = \App\Models\Regions::where('name', $regionName)->first();
-                $regionId = $region?->id;
+            $regionName = trim($row['region_name'] ?? $row['c'] ?? '');
 
-                if (!$regionId) {
-                    Log::warning("❗ Region topilmadi: [$regionName]", $row);
+            if (!empty($regionName)) {
+                if (isset($regionMapping[$regionName])) {
+                    $regionId = intval($regionMapping[$regionName]);
+                } else {
+                    $region = \App\Models\Regions::where('name', $regionName)->first();
+                    $regionId = $region?->id;
+
                 }
             }
 
-            // court_name_id (majburiy)
+            $courtNameId = null;
             $courtName = trim($row['court_name_id'] ?? '');
-            $court = \App\Models\CourtName::where('name', $courtName)->first();
-
-            if (!$court) {
-                Log::warning("❗ Court topilmadi: [$courtName]", $row);
-                continue;
+            if (!empty($courtName)) {
+                $court = \App\Models\CourtName::where('name', $courtName)->first();
+                $courtNameId = $court?->id;
+                if (!$courtNameId) {
+                    Log::warning("❗ Sud nomi topilmadi: [$courtName]", $row);
+                }
             }
 
-            // court_type_id (majburiy)
-            $courtTypeRaw = trim($row['court_type'] ?? '');
-            $courtTypeId = $courtTypeMapping[$courtTypeRaw] ?? null;
-
-            if (!$courtTypeId) {
-                Log::warning("❗ Court turi mos emas: [$courtTypeRaw]", $row);
-                continue;
-            }
-
-            // position_id (majburiy)
+            $positionId = null;
             $positionName = trim($row['position_id'] ?? '');
-            $position = \App\Models\Positions::where('name', $positionName)->first();
-
-            if (!$position) {
-                Log::warning("❗ Lavozim topilmadi: [$positionName]", $row);
-                continue;
+            if (!empty($positionName)) {
+                $position = \App\Models\Positions::where('name', $positionName)->first();
+                $positionId = $position?->id;
+                if (!$positionId) {
+                    Log::warning("❗ Lavozim topilmadi: [$positionName]", $row);
+                }
             }
 
-            // create or update
-            \App\Models\Establishment::updateOrCreate(
-                [
-                    'number_state'   => $numberState,
-                    'court_name_id'  => $court->id,
-                    'court_type_id'  => $courtTypeId,
-                    'region_id'      => $regionId,
-                ],
-                [
-                    'position_id'    => $position->id,
-                    'position_type'  => null, // agar kerak bo‘lsa o‘zgartiring
-                ]
-            );
+            $courtTypeId = null;
+            $courtType = trim($row['court_type'] ?? '');
+            if (!empty($courtType)) {
+                $type = \App\Models\CourtType::where('name', $courtType)->first();
+                $courtTypeId = $type?->id;
+
+            }
+
+            if ($numberState && ($regionId !== null || $courtType === 'Олий суд')) {
+                $data = [
+                    'court_name_id'    => $courtNameId,
+                    'court_type_id'    => $courtTypeId,
+                    'position_id'      => $positionId,
+                ];
+
+                if ($regionId !== null) {
+                    $data['region_id'] = $regionId;
+                }
+
+                \App\Models\Establishment::updateOrCreate(
+                    ['number_state' => $numberState],
+                    $data
+                );
+            }
         }
     }
 }
-

@@ -79,4 +79,8 @@ class TypeOfDecisionResource extends Resource
             'edit' => Pages\EditTypeOfDecision::route('/{record}/edit'),
         ];
     }
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('super_admin');
+    }
 }

@@ -85,4 +85,8 @@ class MistakeResource extends Resource
             'edit' => Pages\EditMistake::route('/{record}/edit'),
         ];
     }
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('super_admin');
+    }
 }

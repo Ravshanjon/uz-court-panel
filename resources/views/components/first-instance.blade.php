@@ -1,10 +1,14 @@
-<div>
+
+
+
+
     <x-filament::fieldset>
         <x-slot name="label">
             <x-filament::badge color="warning">
                 Биринчи инстанция натижаси
             </x-filament::badge>
         </x-slot>
+
         <ul class="grid grid-cols-3 gap-4  ">
             <li class="text-gray-900 border-r">
                 <span class="font-semibold">Суд қарори чиқарилган сана:</span>
@@ -59,4 +63,4 @@
         </ul>
     </x-filament::fieldset>
 
-</div>
+

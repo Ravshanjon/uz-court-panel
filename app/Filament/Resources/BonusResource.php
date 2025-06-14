@@ -69,4 +69,8 @@ class BonusResource extends Resource
             'edit' => Pages\EditBonus::route('/{record}/edit'),
         ];
     }
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('super_admin');
+    }
 }

@@ -29,7 +29,6 @@ class RegionSeeder extends Seeder
             'Сурхондарё вилояти',
             'Тошкент шаҳри',
             'Тошкент вилояти',
-
         ];
 
         foreach ($regions as $region) {

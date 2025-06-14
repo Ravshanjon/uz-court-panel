@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\JudgeRatingCalculator;
 use Filament\Forms\Form;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Notifications\Notification;
@@ -23,11 +24,12 @@ class Judges extends Model
     protected static function booted(): void
     {
         static::creating(function ($judge) {
+
             if (empty($judge->id)) {
+
                 $judge->id = Str::uuid();
 
                 $settings = RatingSetting::first();
-
                 $judge->quality_score = $settings?->quality_score ?? 0;
                 $judge->etiquette_score = $settings?->etiquette_score ?? 0;
                 $judge->ethics_score = $settings?->ethics_score ?? 0;
@@ -41,25 +43,33 @@ class Judges extends Model
                     + $judge->adding_rating;
             }
         });
-
-        static::updating(function ($judge) {
-            Log::info('🔁 Judge update', $judge->toArray());
-
-            $judge->rating = $judge->quality_score
-                + $judge->etiquette_score
-                + $judge->ethics_score
-                + $judge->foreign_language_bonus
-                + $judge->adding_rating;
+        static::created(function ($judge) {
+            JudgeRatingHistory::create([
+                'judge_id' => $judge->id,
+                'rating' => $judge->rating,
+            ]);
         });
+        static::updating(function ($judge) {
+            if (!app()->runningInConsole()) {
+                $judge->rating = $judge->quality_score
+                    + $judge->etiquette_score
+                    + $judge->ethics_score
+                    + $judge->foreign_language_bonus
+                    + $judge->adding_rating;
+            }
+            if ($judge->isDirty('rating')) {
+                JudgeRatingHistory::create([
+                    'judge_id' => $judge->id,
+                    'rating' => $judge->rating,
+                ]);
+            }
+
+        });
+
+
     }
-
-
-
-    protected $appends = ['overall_score'];
-
-
     protected $fillable = [
-        'quality_score','etiquette_score','ethics_score','foreign_language_bonus','adding_rating',
+        'quality_score', 'etiquette_score', 'ethics_score', 'foreign_language_bonus', 'adding_rating',
         'rating',
         'ethics_score',
         'bonuses_id',
@@ -143,8 +153,6 @@ class Judges extends Model
     {
         return $this->belongsTo(Positions::class);
     }
-
-
     public function position_category()
     {
         return $this->belongsTo(PositionCategories::class);
@@ -284,8 +292,10 @@ class Judges extends Model
 
     public function appeals()
     {
-        return $this->hasMany(Appeal::class, 'judge_id');
+        return $this->hasMany(Appeal::class, 'judge_id')->with(['reason.instances', 'reason.typeOfDecision']);
+
     }
+
     public function getLatestStageInfoAttribute(): ?string
     {
         $stage = $this->judges_stages()
@@ -296,5 +306,15 @@ class Judges extends Model
 
         return $stage->position?->name . ' (' . $stage->start_date?->format('d.m.Y') . ' - ' . $stage->end_date?->format('d.m.Y') . ')';
     }
+
+    public function private_awards()
+    {
+        return $this->hasMany(PrivateAward::class, 'judges_id');
+    }
+    public function ratingHistories()
+    {
+        return $this->hasMany(JudgeRatingHistory::class, 'judge_id');
+    }
+
 }
 

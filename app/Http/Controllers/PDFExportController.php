@@ -6,6 +6,7 @@ use App\Models\Judges;
 use App\Models\Judges_Stages;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
 use Spatie\Browsershot\Browsershot;
 
@@ -42,5 +43,31 @@ class PDFExportController extends Controller
 
         // 4. Yuklab berish
         return response()->download($pdfPath)->deleteFileAfterSend(true);
+    }
+
+    public function generate($judgeAId, $judgeBId)
+    {
+        $user = Auth::user();
+
+        $judgeA = Judges::findOrFail($judgeAId);
+        $judgeB = Judges::findOrFail($judgeBId);
+
+        // Blade view HTML sifatida render qilinadi
+        $html = View::make('pdf.compare-judges', compact('judgeA', 'judgeB','user'))->render();
+
+        // Saqlanadigan PDF manzili
+        $filePath = storage_path('app/public/judge_compare_' . $judgeA->id . '_' . $judgeB->id . '.pdf');
+
+        // Browsershot orqali PDF yaratish
+        Browsershot::html($html)
+            ->format('A4')
+            ->landscape()
+            ->showBackground()
+            ->margins(10, 10, 10, 10)
+            ->waitUntilNetworkIdle()
+            ->savePdf($filePath);
+
+        // Yuklab olishga qaytarish
+        return response()->download($filePath)->deleteFileAfterSend(true);
     }
 }

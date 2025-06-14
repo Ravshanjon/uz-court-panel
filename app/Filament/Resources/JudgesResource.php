@@ -5,6 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Imports\JudgesImporter;
 use App\Filament\Resources\JudgesResource\Pages;
 use App\Filament\Resources\JudgesResource\RelationManagers\BonusRelationManager;
+use App\Models\Establishment;
+use App\Models\JudgeRatingHistory;
 use App\Models\Judges_Stages;
 use App\Models\RatingSetting;
 use Carbon\Carbon;
@@ -59,21 +61,71 @@ class JudgesResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
+
     public static function getEloquentQuery(): Builder
     {
+        $user = auth()->user();
+
+        $regionId = $user->regions_id;
+        $courtTypeId = $user->judge?->establishment?->court_type_id;
+        $positionCategoryId = $user->judge?->establishment?->position_category_id;
+        $courtSpecialtyId = $user->judge?->establishment?->court_specialty_id;
+        $typeOfUserId = $user->type_of_users_id;
+        $judgeId = $user->judge_id;
+
+        // HAR DOIM JOINLAR BO‘LSIN
         $query = parent::getEloquentQuery()
-            ->with(['judges_stages.establishment']) // Eager load qilish mumkin
-            ->orderByDesc('created_at');
 
-        $user = Auth::user();
+            ->leftJoin('establishments', 'judges.establishment_id', '=', 'establishments.id')
+            ->select('judges.*', 'establishments.number_state as est_number')
+            ->orderByRaw('COALESCE(establishments.number_state, 999999) ASC');
 
-        if ($user && $user->hasRole('panel_user') && $user->pinfl) {
-            $query->where('judges.pinfl', $user->pinfl);
+        if ($user->hasRole('malaka')) {
+            return $query->where('establishments.region_id', $regionId);
+        }
+        // 👨‍⚖️ Faqat sudyalar uchun
+        if ($user->hasRole('judges')) {
+            $courtTypeId = $user->judge?->establishment?->court_type_id;
+            $courtSpecialtyId = $user->judge?->establishment?->court_specialty_id;
+            $positionCategoryId = $user->position_categories_id;
+            $regionId = $user->regions_id;
+//
+            if (is_null($regionId) && $courtTypeId == 1 && $positionCategoryId === 1) {
+                return $query
+                    ->where('establishments.court_type_id', 1);
+            }
+
+            // ✅ OLIY SUD RAIS O‘RINBOSARI – yo‘nalish (Жиноят, Фуқаролик...) bo‘yicha filtrlaydi
+            if (is_null($regionId) && $courtTypeId == 1 && $positionCategoryId === 3 && $courtSpecialtyId) {
+
+                return $query
+                    ->where('establishments.court_type_id', 1)
+                    ->where('establishments.court_specialty_id', $courtSpecialtyId);
+            }
+
+            // Rais
+            if ($positionCategoryId === 1 && $typeOfUserId == 2 && $regionId) {
+
+                return $query
+                    ->where('establishments.region_id', $regionId);
+            }
+
+            // Rais o‘rinbosari
+            if ($positionCategoryId === 3 && $regionId) {
+                $query = $query->where('establishments.region_id', $regionId);
+
+                if ($courtSpecialtyId) {
+                    $query = $query->where('establishments.court_specialty_id', $courtSpecialtyId);
+                }
+
+                return $query;
+            }
+
+            return $query->where('judges.id', $judgeId);
         }
 
         return $query;
     }
-
 
     public static function form(Form $form): Form
     {
@@ -260,33 +312,6 @@ class JudgesResource extends Resource
                             ->icon('heroicon-o-square-3-stack-3d'),
                         Tab::make('Оилавий Ҳолати')->schema([
 
-                            Grid::make(3)->schema([
-                                TextInput::make('father_name')->label('Отасининг ФИО'),
-                                DatePicker::make('father_brith_date')->label('Туғилган санаси'),
-                                TextInput::make('father_lives_place')->label('Отасининг яшаш манзили'),
-                            ]),
-
-                            Grid::make(3)->schema([
-                                TextInput::make('mother_name')->label('Онасининг ФИО'),
-                                DatePicker::make('mother_brith_date')->label('Туғилган санаси'),
-                                TextInput::make('mother_lives_place')->label('Онасининг яшаш манзили'),
-                            ]),
-
-
-                            Grid::make(3)->schema([
-                                TextInput::make('wife_name')->label('Турмуш ўртоғининг ФИО'),
-                                DatePicker::make('wife_brith_date')->label('Туғилган санаси'),
-                                TextInput::make('wife_lives_place')->label('Турмуш ўртоғининг яшаш манзили'),
-                            ]),
-
-                            Forms\Components\Section::make('Фарзандлари')->schema([
-                                Grid::make(3)->schema([
-                                    Repeater::make('test')->schema([
-                                        TextInput::make('kids')->label('Фарзанди'),
-                                    ])
-                                ])
-                            ])
-                                ->columns(2),
                         ])
                             ->icon('heroicon-o-identification'),
 
@@ -297,95 +322,23 @@ class JudgesResource extends Resource
                                         Placeholder::make('judges-stages')
                                             ->label('')
                                             ->content(fn($record) => view('components.appeal', ['record' => $record])),
-
-//                                        Forms\Components\Placeholder::make('')
-//                                            ->content(new \Illuminate\Support\HtmlString('<div class="text-gray-500 group-hover:text-gray-700 group-focus-visible:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200 dark:group-focus-visible:text-gray-200 text-2xl text-primary-400 underline">Биринчи инстанция</div>')),
-//
-////                                        Grid::make(4)->schema([
-////                                            TextInput::make('full_name')
-////                                                ->label('Судья')
-////                                                ->disabled()
-////                                                ->formatStateUsing(function ($state, $record) {
-////                                                    return
-////                                                        ($record->middle_name ?? '') . ' ' .
-////                                                        ($record->first_name ?? '') . ' ' .
-////                                                        ($record->last_name ?? '');
-////                                                }),
-////
-////                                            TextInput::make('court_names')
-////                                                ->label('Суд номи')
-////                                                ->disabled()
-////                                                ->formatStateUsing(function ($state, $record) {
-////                                                    return $record->establishment->court_names?->name ?? '';
-////                                                }),
-////
-////                                            TextInput::make('court_specialty')
-////                                                ->label('Суд ихтисослиги')
-////                                                ->disabled()
-////                                                ->formatStateUsing(function ($state, $record) {
-////                                                    return $record->establishment->court_specialty?->name ?? '';
-////                                                }),
-////
-////                                            TextInput::make('court_type')
-////                                                ->label('Суд тури')
-////                                                ->disabled()
-////                                                ->formatStateUsing(function ($state, $record) {
-////                                                    return $record->establishment->court_type?->name ?? '';
-////                                                }),
-////                                            Grid::make(4)->schema([
-////                                                TextInput::make('court_type')
-////                                                    ->label('Иш тоифаси')->columnSpan(2),
-////                                                Forms\Components\Select::make('type_of_decision_id')
-////                                                    ->relationship('TypeOfDecision', 'name')
-////                                                    ->columnSpan(2)
-////                                                    ->label('Суд қарори тури'),
-////
-////                                                Forms\Components\Textarea::make('test')->rows(3)->label('Ишдаги тарафлар')->columnSpan(2),
-////                                                Forms\Components\Textarea::make('test')->rows(3)->label('Иш мазмуни')->columnSpan(2),
-////                                                FileUpload::make('file')->label('Файлни юклаш')
-////                                            ])
-//
-//
-////                                            Forms\Components\Section::make('type')
-////                                                ->schema([
-////                                                    Forms\Components\Placeholder::make('')
-////                                                        ->content(new \Illuminate\Support\HtmlString('<div class="bg-[#ededed] px-4 py-2 font-bold rounded">🧾 Қисм: Бонус маълумотлари</div>')),
-////
-////                                                    Grid::make(5)->schema([
-////                                                        Forms\Components\Fieldset::make('appelation')->schema([
-////                                                            TextInput::make('test')
-////                                                        ])->label('Апеллияция')->columnSpan(1),
-////
-////                                                        Forms\Components\Fieldset::make('casation')->schema([
-////                                                            TextInput::make('test')
-////                                                        ])->columnSpan(1),
-////
-////                                                        Forms\Components\Fieldset::make('casation')->schema([
-////                                                            TextInput::make('test')
-////                                                        ])->label('Кассация')->columnSpan(1),
-////
-////                                                        Forms\Components\Fieldset::make('appelation')->schema([
-////                                                            TextInput::make('test')
-////                                                        ])->label('Апеллияция')->columnSpan(1),
-////
-////                                                        Forms\Components\Fieldset::make('casation')->schema([
-////                                                            TextInput::make('test')
-////                                                        ])->columnSpan(1),
-////                                                    ]),
-////                                                ])
-////                                                ->collapsed(),
-//
-//
-//                                        ]),
-
                                     ])->icon('heroicon-o-book-open')
+                                        ->visible(fn($record) => $record?->establisatehment?->position_cgory?->name !== 'Суд раиси')
+                                        ->badge(function ($record) {
+
+                                        })
                                         ->label('Суд қарорларининг сифати'),
 
                                     Tab::make('Хизмат текшируви')->schema([
                                         Placeholder::make('judges-stages')
                                             ->label('')
-                                            ->content(fn($record) => view('components.service-inspection-tab', ['record' => $record])),
-                                    ])->icon('heroicon-o-fire'),
+                                            ->content(fn($record) => view('components.service-inspection-tab', ['record' => $record]))
+                                    ])->badge(function ($record) {
+
+
+                                    })
+                                        ->visible(fn($record) => $record?->establishment?->position_category?->name !== 'Суд раиси')
+                                        ->icon('heroicon-o-fire'),
                                     Tab::make('Чет тили')->schema([
 
                                     ])->icon('heroicon-o-language'),
@@ -397,6 +350,13 @@ class JudgesResource extends Resource
 //
                                     ])->icon('heroicon-o-plus'),
 
+                                    Tab::make('Хусусий ажрим')->schema([
+                                        Placeholder::make('private_awards')
+                                            ->label('')
+                                            ->content(fn($record) => view('components.private_awards', ['record' => $record])),
+//
+                                    ])->icon('heroicon-o-clipboard-document'),
+
                                 ])
                         ])->icon('heroicon-o-chart-pie'),
                     ])->columnSpan(['lg' => 2])
@@ -405,36 +365,69 @@ class JudgesResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $user = auth()->user();
+        $filters = [];
 
+        if ($user->hasRole('judges')) {
+            $judge = Judges::where('pinfl', $user->pinfl)->first();
+
+            if ($judge && $judge->position_category_id === 3) {
+                $filters[] = Tables\Filters\SelectFilter::make('gender')
+                    ->label('Жинс бўйича фильтр')
+                    ->options([
+                        0 => 'Аёл',
+                        1 => 'Эркак',
+                    ]);
+            }
+        }
         return $table
             ->paginated([25])
             ->columns([
-                TextColumn::make('judges_stages_est_number_state')
-                    ->label('№')
-                    ->getStateUsing(function ($record) {
-                        return $record->judges_stages
-                            ->sortBy(fn($stage) => $stage->establishment?->number_state ?? 999)
-                            ->first()?->establishment?->number_state ?? '—';
-                    }),
-
+                TextColumn::make('establishment.number_state')
+                    ->label('№'),
                 TextColumn::make('codes')
                     ->label('ID')
                     ->badge()
                     ->searchable(),
 
-                ImageColumn::make('image')
-                    ->circular()
-                    ->alignment('center')
-                    ->getStateUsing(function ($record) {
-                        return $record->image
-                            ? asset('storage/' . $record->image)
-                            : asset('image/default.jpg'); // default avatar yo‘li
-                    }),
+//                ImageColumn::make('image')
+//                    ->circular()
+//                    ->label('Расм')
+//                    ->alignment('center')
+//                    ->getStateUsing(function ($record) {
+//                        return $record->image
+//
+//                            ? asset('storage/' . $record->image)
+//                            : asset('image/default.jpg'); // default avatar yo‘li
+//                    }),
 
                 TextColumn::make('middle_name')->label('Фамилияси')->searchable(),
                 TextColumn::make('first_name')->label('Исми')->searchable(),
                 TextColumn::make('last_name')->label('Отасининг исми')->searchable(),
 
+                TextColumn::make('faol_ish_joyi')
+                    ->wrap(10)
+                    ->label('Лавозими')
+                    ->getStateUsing(function ($record) {
+                        $stage = $record->judges_stages()
+                            ->where(function ($query) {
+                                $query->whereNull('end_date')
+                                    ->orWhere('end_date', '>', now());
+                            })
+                            ->latest('start_date')
+                            ->first();
+
+                        if (!$stage) {
+                            return '—';
+                        }
+
+                        $start = \Carbon\Carbon::parse($stage->start_date)->format('d.m.Y');
+                        $end = $stage->end_date
+                            ? \Carbon\Carbon::parse($stage->end_date)->format('d.m.Y')
+                            : 'ҳозиргача';
+
+                        return "{$stage->working_place}";
+                    }),
 
                 Tables\Columns\TextColumn::make('birth_date')
                     ->label('Туғилган сана')
@@ -453,7 +446,10 @@ class JudgesResource extends Resource
                 TextColumn::make('rating')
                     ->label('Рейтинг')
                     ->icon('heroicon-o-chart-bar')
-                    ->sortable()
+                    ->sortable(),
+
+//                TextColumn::make('judges_stages.counter')
+//                    ->label('Судьялик стажи')
 
             ])
             ->filters([
@@ -474,7 +470,7 @@ class JudgesResource extends Resource
                     }),
                 Tables\Filters\SelectFilter::make('regions_id')
                     ->relationship('region', 'name')
-                    ->label('Ҳудуд')
+                    ->label('Туғилган жойи бўйича')
                     ->multiple()
                     ->searchable()
                     ->preload()
@@ -501,20 +497,27 @@ class JudgesResource extends Resource
                     ->preload()
                     ->placeholder('Лавозимни танланг'),
 
+                SelectFilter::make('establishment.region_id')
+                    ->columnSpan(2)
+                    ->relationship('establishment.region', 'name')
+                    ->label('Ҳудуд бўйича (жойлашув)')
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Ҳудудни танланг'),
+
             ], layout: Tables\Enums\FiltersLayout::AboveContent)->searchable()
             ->actions([
                 Action::make('download')
                     ->label('')
                     ->icon('heroicon-o-arrow-down-on-square-stack')
                     ->color('danger')
-                    ->visible(fn() => auth()->user()?->name === 'admin')
                     ->url(fn($record) => route('judges.download-pdf', $record)) // Dynamic route
                     ->openUrlInNewTab(),
                 Action::make('view_cv')
                     ->label('Объективка ')
                     ->icon('heroicon-o-paper-clip')
                     ->color('primary')
-                    ->visible(fn() => auth()->user()?->name === 'admin')
                     ->modalContent(function ($record) {
                         $judges_stages = DB::table('judges_stages')
                             ->where('judge_id', $record->id)
@@ -921,30 +924,6 @@ class JudgesResource extends Resource
                             ]),
                             Infolists\Components\Tabs\Tab::make('Оилавий ҳолати')->schema([
                                 Infolists\Components\Grid::make(4)->schema([
-                                    Fieldset::make('Отаси')->schema([
-                                        TextEntry::make('family.father_name')->label('Отасининг исми'),
-                                        TextEntry::make('family.father_brith_date')->date('d.m.Y')->label('Отасининг туғилган санаси'),
-
-                                    ])
-                                        ->extraAttributes(['class' => 'bg-blue-500'])
-                                        ->columnSpan(1),
-                                    Fieldset::make('Онаси')->schema([
-                                        TextEntry::make('family.father_name')->label('Отасининг исми'),
-                                        TextEntry::make('family.father_brith_date')->date('d.m.Y')->label('Отасининг туғилган санаси'),
-                                        TextEntry::make('family.father_lives_place')->label('Яшаш манзили'),
-                                    ])->columnSpan(1),
-                                    Fieldset::make('Турмуш ўртоғи')->schema([
-                                        TextEntry::make('family.father_name')->label('Отасининг исми'),
-                                        TextEntry::make('family.father_brith_date')->date('d.m.Y')->label('Отасининг туғилган санаси'),
-                                    ])->columnSpan(1),
-//                                    Fieldset::make('Фарзандари')->schema([
-//                                        TextEntry::make('family.father_name')->label('Отасининг исми'),
-//                                        TextEntry::make('family.father_brith_date')->date('d.m.Y')->label('Отасининг туғилган санаси'),
-//                                    ])->columnSpan(1),
-//                                    Fieldset::make('Фарзандари')->schema([
-//                                        TextEntry::make('family.father_name')->label('Отасининг исми'),
-//                                        TextEntry::make('family.father_brith_date')->date('d.m.Y')->label('Отасининг туғилган санаси'),
-//                                    ])->columnSpan(1),
 
 
                                 ]),
@@ -958,9 +937,12 @@ class JudgesResource extends Resource
                             Infolists\Components\Tabs\Tab::make('Рейтинг')->schema([
 
                                 ViewEntry::make('rating-view')
-                                    ->view('components.rating-page') // Blade fayl nomi
+                                    ->view('components.rating-page')
                                     ->viewData([
-                                        'record' => $infolist->record,
+                                        'record' => $infolist->record->load([
+                                            'appeals.reason.instances',
+                                            'appeals.reason.typeOfDecision',
+                                        ]),
                                         'ratingSetting' => RatingSetting::first(),
                                     ])
                                     ->columnSpanFull(),
@@ -970,14 +952,14 @@ class JudgesResource extends Resource
                                     ->label('Рейтинг графиги')
                                     ->view('components.profile-ratings')
                                     ->viewData(function ($record) {
-                                        $ratings = Judges::where('id', $record->id)
-                                            ->orderBy('created_at', 'desc')
-                                            ->get(['created_at', 'rating']);
+                                        $ratings = JudgeRatingHistory::where('judge_id', $record->id)
+                                            ->orderBy('created_at')
+                                            ->get(['recorded_at', 'created_at', 'rating']); // ⚠️ created_at ham kerak
+
                                         return [
                                             'ratings' => $ratings,
                                         ];
                                     })
-                                    ->columnSpanFull(),
                             ]),
                         ]),
 
@@ -1051,5 +1033,7 @@ class JudgesResource extends Resource
 
         return $data;
     }
+
+
 }
 

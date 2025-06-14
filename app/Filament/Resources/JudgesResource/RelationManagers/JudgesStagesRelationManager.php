@@ -30,10 +30,6 @@ class JudgesStagesRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Hidden::make('establishment_id')
-                    ->default(fn ($livewire) => $livewire->ownerRecord?->establishment_id)
-                    ->required(),
-
                 Placeholder::make('sudya_info')
                     ->label('')
                     ->columnSpanFull(),

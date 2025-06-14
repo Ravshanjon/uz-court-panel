@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Imagick;
+use PhpParser\Node\Expr\AssignOp\Mod;
 use Psy\VersionUpdater\Downloader\FileDownloader;
 use Svg\Tag\Text;
 use Telegram\Bot\Actions;
@@ -33,6 +34,10 @@ class ServiceinspectionRelationManager extends RelationManager
 {
     protected static string $relationship = 'Serviceinspection';
 
+    public function getTableHeading(): string
+    {
+        return 'Хизмат текшируви'; // Custom heading
+    }
 
     public function form(Form $form): Form
     {
@@ -51,7 +56,6 @@ class ServiceinspectionRelationManager extends RelationManager
                         ->searchable()
                         ->preload()
                         ->placeholder('Ҳудудни танланг'),
-
 
 
                     Select::make('inspection_adults_id')
@@ -214,10 +218,10 @@ class ServiceinspectionRelationManager extends RelationManager
             ->filters([
                 Tables\Filters\SelectFilter::make('inspection_qualification_dates')
 
-            ], layout: FiltersLayout::AboveContent)
+            ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
-                    ->icon('heroicon-s-plus')
+                    ->label('+')
                     ->color('gray')
                     ->size('sm')
                     ->stickyModalHeader()

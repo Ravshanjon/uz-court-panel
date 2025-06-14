@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\JudgeRatingCalculator;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class service_inspection extends Model
 {
+
     protected $fillable =
         [
             'mistakes_id',
@@ -25,6 +27,7 @@ class service_inspection extends Model
             'inspection_regulations_id',
             'inspection_qualification_dates',
         ];
+
 
     protected static function booted(): void
     {

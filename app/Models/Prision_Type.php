@@ -18,4 +18,5 @@ class Prision_Type extends Model
     {
         return $this->hasMany(service_inspection::class,'prision_type_id');
     }
+
 }

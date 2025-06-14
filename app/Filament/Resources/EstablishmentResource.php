@@ -35,6 +35,7 @@ class EstablishmentResource extends Resource
 
     public static function form(Form $form): Form
     {
+
         return $form
             ->schema([
                 Forms\Components\Card::make()->schema([
@@ -43,6 +44,7 @@ class EstablishmentResource extends Resource
                             ->relationship('court_type', 'name')
                             ->label('Суд тури')
                             ->preload()
+                            ->searchable()
                             ->reactive()
                             ->searchable(),
 
@@ -70,8 +72,9 @@ class EstablishmentResource extends Resource
                             ->preload()
                             ->searchable(),
 
+
                         Select::make('court_specialty_id')
-                            ->relationship('court_specialty', 'name')
+                                ->relationship('court_specialty', 'name')
                             ->label('Суд ихтисослиги')
                             ->preload()
                             ->searchable()
@@ -80,7 +83,6 @@ class EstablishmentResource extends Resource
                         Forms\Components\TextInput::make('number_state')
                             ->numeric()
                             ->unique(ignoreRecord:true)
-
                             ->label('Тартиб рақами'),
 
                         Select::make('position_id')
@@ -113,20 +115,24 @@ class EstablishmentResource extends Resource
     {
 
         return $table
+            ->paginated([25, 50, 100, 'all'])
             ->columns([
+
                 TextColumn::make('number_state')
                     ->label('Тартиб рақами')
+                    ->searchable()
                     ->numeric(),
 
-                TextColumn::make('region.name')->label('Ҳудуд'),
+                TextColumn::make('region.name')->label('Ҳудуд')->wrap(40),
                 Tables\Columns\TextColumn::make('court_type.name')
                     ->label('Суд тури'),
 //                Tables\Columns\BadgeColumn::make('court_specialty.name')->label('Суд ихтисослиги'),
                 TextColumn::make('district_types.name')->label('Вилоят/Туман'),
                 TextColumn::make('provinces_district.name')->label('Туман тури'),
                 TextColumn::make('court_names.name')->label('Суд ном'),
+                TextColumn::make('position_category.name')->label('Лавозим тури'),
                 TextColumn::make('position.name')->label('Лавозим номи')
-                    ->limit(42),
+                    ->wrap(40),
                 TextColumn::make('position_category.name')->label('Лавозим тури'),
 
 

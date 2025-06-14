@@ -2,12 +2,23 @@
 <x-filament-panels::page xmlns:x-filament="http://www.w3.org/1999/html">
 
     <x-filament::card>
+
         <div class="space-y-6">
             {{ $this->form }}
-            <x-filament::button wire:click="compareJudges" class="mt-4">
+            <x-filament::button
+                wire:click="compareJudges"
+                x-on:click="showCharts = true"
+                class="mt-4"
+            >
                 Taqqoslash
             </x-filament::button>
-
+            @if($this->judgeA && $this->judgeB)
+                <a href="{{ route('compare.judges.pdf', ['judgeAId' => $this->judgeA, 'judgeBId' => $this->judgeB]) }}"
+                   target="_blank"
+                   class="inline-flex mt-4 items-center px-4 py-2 bg-blue-600 text-gray-400 rounded">
+                    📄 PDF yuklab olish
+                </a>
+            @endif
             @php
                 $stats = $this->comparisonStats;
                 $judgeA = $this->getJudgeAData();
@@ -15,6 +26,7 @@
             @endphp
 
             @if ($judgeA = $this->getJudgeAData() and $judgeB = $this->getJudgeBData())
+
                 <div id="spiderChart" class="mt-10 w-full max-w-3xl mx-auto"></div>
 
                     <div class="flex justify-center divide-x">
@@ -58,10 +70,14 @@
                                         </div>
                                     </div>
                                 </div>
+
                             </div>
 
                             <div class="mt-5 text-gray-600 text-sm">
                                 {{$judgeA->last_name .' '. $judgeA->first_name .' '. $judgeA->middle_name}}
+                            </div>
+                            <div class="mt-5 text-gray-600 text-sm">
+                                {{$judgeA->establishment->position->name}}
                             </div>
                         </div>
 
@@ -143,111 +159,83 @@
             @endif
 
         </div>
-        <div class="grid grid-cols-2 gap-4">
-            <div class="flex justify-between ">
-                <div   x-data="{
-        chart: null,
-        data: @js($this->spiderChartData),
-        init() {
-            if (!this.data) return;
-
-            const options = {
-                series: [
-                    {
-                        name: '{{ $judgeA->last_name ?? 'Sudya A' }}',
-                        data: this.data.judgeA
-                    },
-                    {
-                        name: '{{ $judgeB->last_name ?? 'Sudya B' }}',
-                        data: this.data.judgeB
-                    }
-                ],
-                chart: {
-                    height: 400,
-                    type: 'radar',
-                },
-                title: {
-
-                },
-                colors: ['#FF4560', '#008FFB'],
-                markers: {
-                    size: 4,
-                    colors: ['#fff'],
-                    strokeColors: ['#FF4560', '#008FFB'],
-                    strokeWidth: 2
-                },
-                dataLabels: {
-                    enabled: true
-                },
-                plotOptions: {
-                    radar: {
-                        size: 140,
-                        polygons: {
-                            strokeColors: '#e9e9e9',
-                            fill: {
-                                colors: ['#f8f8f8', '#fff']
+        @if($this->spiderChartData && isset($this->spiderChartData['labels']))
+            <div x-show="showCharts">
+                <div class="grid grid-cols-2 gap-4 mt-6">
+                    <div class="flex justify-between w-full">
+                        <div
+                            x-data="{
+                    chart: null,
+                    data: @js($this->spiderChartData),
+                    init() {
+                        const options = {
+                            chart: {
+                                height: 400,
+                                type: 'line',
+                                zoom: { enabled: false }
+                            },
+                            series: [
+                                {
+                                    name: '{{ $judgeA->last_name ?? 'Sudya A' }}',
+                                    data: this.data.judgeA
+                                },
+                                {
+                                    name: '{{ $judgeB->last_name ?? 'Sudya B' }}',
+                                    data: this.data.judgeB
+                                }
+                            ],
+                            stroke: {
+                                curve: 'smooth',
+                                width: 3
+                            },
+                            markers: {
+                                size: 5
+                            },
+                            dataLabels: {
+                                enabled: true
+                            },
+                            title: {
+                                text: 'Sudya ko‘rsatkichlari',
+                                align: 'left'
+                            },
+                            colors: ['#FF4560', '#008FFB'],
+                            xaxis: {
+                                categories: this.data.labels
+                            },
+                            yaxis: {
+                                min: 0,
+                                max: 100,
+                                title: {
+                                    text: 'Ball'
+                                }
+                            },
+                            tooltip: {
+                                y: {
+                                    formatter: function (val) {
+                                        return val + ' ball';
+                                    }
+                                }
                             }
-                        }
-                    }
-                },
-                xaxis: {
-                    categories: this.data.labels
-                },
-                yaxis: {
-                    labels: {
-                        formatter: function (val, i) {
-                            return i % 2 === 0 ? val : '';
-                        }
-                    }
-                }
-            };
+                        };
 
-            this.chart = new ApexCharts(this.$refs.chart, options);
-            this.chart.render();
-        }
-    }"
-                       x-init="init()"
-                       class="mt-10 w-full max-w-3xl mx-auto"
-                >
-                    <div x-ref="chart"></div>
+                        this.chart = new ApexCharts(this.$refs.chart, options);
+                        this.chart.render();
+                    }
+                }"
+                            x-init="init()"
+                            class="w-full"
+                        >
+                            <div x-ref="chart" class="w-full"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+
+        @endif
 
     </x-filament::card>
     @push('scripts')
         <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                var options = {
-                    series: [{
-                        name: 'Ballar',
-
-                    }],
-                    chart: {
-                        height: 350,
-                        type: 'radar'
-                    },
-                    title: {
-                        text: 'Sudya ko‘rsatkichlari'
-                    },
-                    xaxis: {
-                        categories: ['Sifat', 'Odob', 'Xizmat', 'Til', 'Qo‘shimcha', 'Boshqa']
-                    },
-                    yaxis: {
-                        tickAmount: 5,
-                        labels: {
-                            formatter: function (val) {
-                                return parseInt(val)
-                            }
-                        }
-                    }
-                };
-
-                var chart = new ApexCharts(document.querySelector("#chart"), options);
-                chart.render();
-            });
-        </script>
     @endpush
 </x-filament-panels::page>
 

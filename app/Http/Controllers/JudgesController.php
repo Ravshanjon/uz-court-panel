@@ -19,9 +19,32 @@ class JudgesController extends Controller
     /**
      * Display a listing of the resource.
      */
+    public function testJudgeStage()
+    {
+        $judge = Judges::first();
+        $stages = $judge?->judges_stages;
 
+        if (!$stages || $stages->isEmpty()) {
+            dd('❌ Sudyaga bosqich (judges_stages) biriktirilmagan');
+        }
+
+        $est = $stages->last()?->establishment;
+
+        if (!$est) {
+            dd('❌ Establishment topilmadi');
+        }
+
+        dd([
+            'court_type_id' => $est->court_type_id,
+            'court_specialty_id' => $est->court_specialty_id,
+            'region_id' => $est->region_id,
+            'establishment_id' => $est->id,
+            'establishment_name' => $est->name ?? 'Nomaʼlum',
+        ]);
+    }
     public function index()
     {
+
         $judges = Judges::all();
         return response($judges);
 //        $judges = Judges::with(['serviceinspection', 'judges_stages'])

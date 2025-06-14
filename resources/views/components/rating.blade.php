@@ -1,42 +1,27 @@
-
 @props([
-    'rating' => null,  // Example: Score for Inspection
-
+    'rating' => null,
 ])
 
 @php
-    // Calculate overall score based on inspection and responsive
-    $overall = round(($rating));
-
-    // Determine the grade based on the overall score
+    $overall = round($rating);
     if ($overall >= 86) {
-        $grade = 'Намунали'; // Excellent
+        $grade = 'Намунали';
     } elseif ($overall >= 71) {
-        $grade = 'Яхши'; // Good
+        $grade = 'Яхши';
     } elseif ($overall >= 56) {
-        $grade = 'Қониқарли'; // Satisfactory
+        $grade = 'Қониқарли';
     } else {
-        $grade = 'Қониқарсиз'; // Unsatisfactory
+        $grade = 'Қониқарсиз';
     }
 @endphp
 
-<div id="chart" class="w-full max-w-2xl mx-auto"></div>
-
-<div class="text-center">
-    <p class="text-sm font-medium leading-6 text-gray-950 dark:text-white">{{ $grade }}</p>
-</div>
-
-@once
-    @push('scripts')
-        <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    @endpush
-@endonce
-
-@push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var options = {
-                series: [{{ $overall }}],
+<div
+    x-data="{
+        rating: {{ $overall }},
+        chart: null,
+        init() {
+            this.chart = new ApexCharts(this.$refs.chart, {
+                series: [this.rating],
                 chart: {
                     height: 350,
                     type: 'radialBar',
@@ -62,7 +47,6 @@
                         dataLabels: {
                             name: {
                                 fontSize: '16px',
-                                color: undefined,
                                 offsetY: 80
                             },
                             value: {
@@ -70,7 +54,7 @@
                                 fontSize: '85px',
                                 color: '#444447',
                                 formatter: function (val) {
-                                    return val + " ";
+                                    return val + ' ';
                                 }
                             }
                         }
@@ -91,10 +75,23 @@
                     dashArray: 4
                 },
                 labels: [''],
-            };
+            });
 
-            var chart = new ApexCharts(document.querySelector("#chart"), options);
-            chart.render();
-        });
-    </script>
-@endpush
+            this.chart.render();
+        }
+    }"
+>
+    <div x-ref="chart" class="w-full max-w-2xl mx-auto"></div>
+
+    <div class="text-center mt-4">
+        <p class="text-sm font-medium leading-6 text-gray-950 dark:text-white">
+            {{ $grade }}
+        </p>
+    </div>
+</div>
+
+@once
+    @push('scripts')
+        <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    @endpush
+@endonce

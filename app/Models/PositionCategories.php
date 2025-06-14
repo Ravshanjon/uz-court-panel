@@ -18,4 +18,7 @@ class PositionCategories extends Model
     {
         return $this->belongsTo(Establishment::class);
     }
+    public function users(){
+        return $this->belongsTo(User::class);
+    }
 }

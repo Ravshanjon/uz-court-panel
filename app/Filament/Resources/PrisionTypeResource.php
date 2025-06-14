@@ -71,4 +71,8 @@ class PrisionTypeResource extends Resource
             'edit' => Pages\EditPrisionType::route('/{record}/edit'),
         ];
     }
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('super_admin');
+    }
 }

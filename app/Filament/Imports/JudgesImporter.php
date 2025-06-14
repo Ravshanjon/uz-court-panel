@@ -1,24 +1,15 @@
 <?php
-
 namespace App\Filament\Imports;
 
 use App\Models\Judges;
-use App\Models\RatingSetting;
-use Filament\Actions\Imports\ImportColumn;
-use Filament\Actions\Imports\Importer;
-use Filament\Actions\Imports\Models\Import;
-use Filament\Notifications\Notification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Spatie\SimpleExcel\SimpleExcelReader;
 
 class JudgesImporter implements ShouldQueue
 {
@@ -32,12 +23,11 @@ class JudgesImporter implements ShouldQueue
     {
         foreach ($this->chunk as $row) {
             try {
-                $genderMapping = [
+                $gender = match(trim($row['gender'] ?? '')) {
                     'Эркак' => 1,
-                    'Аёл' => 0
-                ];
-
-                $gender = $genderMapping[$row['gender']] ?? null;
+                    'Аёл' => 0,
+                    default => null,
+                };
 
                 $nationalityMapping = [
                     'Ўзбек' => 1,
@@ -48,10 +38,9 @@ class JudgesImporter implements ShouldQueue
                     'Туркман' => 6,
                     'Бошқа' => 7,
                     'Қирғиз' => 8,
-                    'Рус' => 8
+                    'Рус' => 8,
                 ];
-
-                $nationalityId = $nationalityMapping[$row['nationality_id']] ?? null;
+                $nationalityId = $nationalityMapping[$row['nationality_id'] ?? ''] ?? null;
 
                 $regionMapping = [
                     'Фарғона вилояти' => 3,
@@ -70,33 +59,33 @@ class JudgesImporter implements ShouldQueue
                     'Хоразм вилояти' => 5,
                 ];
 
-                $birthplace = $row['birth_place'];
+                $birthplace = trim($row['birth_place'] ?? '');
                 $regionId = $regionMapping[$birthplace] ?? null;
 
                 Judges::create([
-                    'id' => (string)Str::uuid(),
-                    'pinfl' => $row['pinfl'],
-                    'birth_date' => isset($row['birth_date'])
-                        ? Carbon::parse($row['birth_date'])->format('Y-m-d')
-                        : null,
-                    'last_name' => $row['last_name'],
-                    'middle_name' => $row['middle_name'],
-                    'first_name' => $row['first_name'],
-                    'codes' => $row['codes'],
+                    'id' => (string) Str::uuid(),
+                    'pinfl' => $row['pinfl'] ?? null,
+                    'birth_date' => isset($row['birth_date']) ? Carbon::parse($row['birth_date'])->format('Y-m-d') : null,
+                    'last_name' => $row['last_name'] ?? null,
+                    'middle_name' => $row['middle_name'] ?? null,
+                    'first_name' => $row['first_name'] ?? null,
+                    'codes' => $row['codes'] ?? null,
                     'nationality_id' => $nationalityId,
-                    'university_id' => $row['university_id'],
-                    'passport_name' => $row['passport_name'],
+                    'university_id' => $row['university_id'] ?? null,
+                    'passport_name' => $row['passport_name'] ?? null,
                     'birth_place' => $birthplace,
                     'region_id' => $regionId,
                     'gender' => $gender,
-                    'special_education' => $row['special_education'],
+                    'special_education' => $row['special_education'] ?? null,
                 ]);
 
             } catch (\Throwable $e) {
                 Log::error('Sudya import xatoligi: ' . $e->getMessage(), [
-                    'row' => $row
+                    'row' => $row,
+                    'trace' => $e->getTraceAsString(),
                 ]);
             }
         }
     }
 }
+

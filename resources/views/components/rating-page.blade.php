@@ -1,15 +1,15 @@
 <x-filament::page>
     <div id="rating-section" class="mb-4 rounded-md " xmlns:x-filament="http://www.w3.org/1999/html">
         <div class="space-y-2">
-{{--            <div class="flex justify-end mb-4">--}}
-{{--                <a href="{{ route('judges.downloadPdf', $record->id) }}"--}}
-{{--                   target="_blank"--}}
-{{--                   class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md bg-primary-600 text-white hover:bg-primary-500 transition"--}}
-{{--                >--}}
-{{--                    <x-heroicon-o-arrow-down-on-square-stack class="w-4 h-4 mr-1" />--}}
-{{--                    Юклаб олиш--}}
-{{--                </a>--}}
-{{--            </div>--}}
+            {{--            <div class="flex justify-end mb-4">--}}
+            {{--                <a href="{{ route('judges.downloadPdf', $record->id) }}"--}}
+            {{--                   target="_blank"--}}
+            {{--                   class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md bg-primary-600 text-white hover:bg-primary-500 transition"--}}
+            {{--                >--}}
+            {{--                    <x-heroicon-o-arrow-down-on-square-stack class="w-4 h-4 mr-1" />--}}
+            {{--                    Юклаб олиш--}}
+            {{--                </a>--}}
+            {{--            </div>--}}
             <x-filament::fieldset>
 
                 <x-slot name="label">
@@ -93,9 +93,22 @@
                                 $cancelledGrouped = $cancelled->groupBy(fn($a) => $a->reason->typeOfDecision->name);
                                 $modifiedGrouped = $modified->groupBy(fn($a) => $a->reason->typeOfDecision->name);
 
+                                // Guruhlangan appeal’lar
+                                $groupedAppeals = $record->appeals
+                                    ->whereNotNull('group_id')
+                                    ->groupBy('group_id');
+
+                                $groupedTotalScore = $groupedAppeals->map(function ($group) {
+                                    return $group->first()?->reason?->score ?? 0;
+                                })->sum();
+
+                                $groupedTotalCount = $groupedAppeals->count();
+
+                                // Yakuniy umumiy hisob
                                 $totalCount = $cancelled->count() + $modified->count();
-                                $totalScore = $cancelled->sum(fn($a) => $a->reason->score ?? 0) +
-                                              $modified->sum(fn($a) => $a->reason->score ?? 0);
+                                $totalScore = $cancelled->sum(fn($a) => $a->reason->score ?? 0)
+                                              + $modified->sum(fn($a) => $a->reason->score ?? 0)
+                                              + $groupedTotalScore;
                             @endphp
                             @if ($cancelledGrouped->isNotEmpty())
                                 <table class="w-full border text-sm text-left">
@@ -174,58 +187,58 @@
                                 @endphp
 
                                 @if ($ethicsMistakes->isNotEmpty())
-                                    <x-filament::modal width="7xl">
-                                        <table
-                                            class="w-full text-sm text-left text-gray-700 border border-gray-200 rounded-lg">
-                                            <thead class="bg-gray-100 font-semibold">
-                                            <tr>
-                                                <th class="px-4 py-2 text-center w-8">№</th>
-                                                <th class="px-4 py-2">Хулоса тузилган сана</th>
-                                                <th class="px-4 py-2">Хизмат текширувини ўтказган судья</th>
-                                                <th class="px-4 py-2">Асос</th>
-                                                <th class="px-4 py-2">Хато ва камчилик</th>
-                                                <th class="px-4 py-2">Малака ҳайъатига юборилган сана</th>
-                                                <th class="px-4 py-2">Жазо</th>
-                                                <th class="px-4 py-2 text-center">Балл</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach ($ethicsMistakes as $index => $mistake)
-                                                <tr class="border-t">
 
-                                                    <td class="px-4 py-2 text-center">{{ $index + 1 }}</td>
-                                                    <td class="px-4 py-2">
-                                                        {{ \Carbon\Carbon::parse($mistake->created_at)->format('d.m.Y') }}
-                                                    </td>
-                                                    <td class="px-4 py-2">
-                                                        {{$mistake->inspectionConducted?->name??''}}
-                                                    </td>
-                                                    <td class="px-4 py-2">
-                                                        {{$mistake->inspectionAdult?->name??''}}
-                                                    </td>
-                                                    <td class="px-4 py-2">
 
-                                                    </td>
-
-                                                    <td class="px-4 py-2">
-                                                        {{ $mistake->prision_type?->name??''}}
-                                                    </td>
-                                                    <td class="px-4 py-2 text-center text-red-600">
-
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-
-                                            </tbody>
-                                        </table>
-                                        <x-slot name="trigger">
-                                            <x-filament::button size="xs" icon="heroicon-o-eye" color="warning"
-                                                                text="sm"
-                                                                class="mt-4">
-                                                Қўриш
+                                    <div class="flex justify-end mt-4">
+                                        {{-- Modal tugmasi --}}
+                                        <div x-data="{ open: false }" class="relative w-full text-right">
+                                            {{-- Tugma --}}
+                                            <x-filament::button size="xs" icon="heroicon-o-eye" color="info" @click="open = true">
+                                                Кўриш
                                             </x-filament::button>
-                                        </x-slot>
-                                    </x-filament::modal>
+
+                                            <div
+                                                x-show="open"
+                                                x-transition
+                                                x-cloak
+                                                class="fixed inset-0 z-40 bg-gray-950/50 dark:bg-gray-950/75 flex items-center justify-center bg-black bg-opacity-50"
+                                                style="backdrop-filter: blur(2px);"
+                                            >
+                                                {{-- Modal ichki kontent --}}
+                                                <div class="bg-white w-11/12 max-w-12xl rounded-xl shadow-lg p-6 relative">
+                                                    <button @click="open = false" class="absolute top-4 right-4 text-2xl text-gray-400 hover:text-black">
+                                                        &times;
+                                                    </button>
+                                                    <table class="w-full border text-sm text-left rounded">
+                                                        <thead class="bg-gray-100 font-semibold">
+                                                        <tr>
+                                                            <th class="px-4 py-2 text-center w-8">№</th>
+                                                            <th class="px-4 py-2">Сана</th>
+                                                            <th class="px-4 py-2">Текширувчи</th>
+                                                            <th class="px-4 py-2">Асос</th>
+                                                            <th class="px-4 py-2">Жазо</th>
+                                                            <th class="px-4 py-2 text-center">Балл</th>
+                                                        </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                        @foreach ($ethicsMistakes as $index => $mistake)
+                                                            <tr class="border-t">
+                                                                <td class="px-4 py-2 text-center">{{ $index + 1 }}</td>
+                                                                <td class="px-4 py-2">{{ \Carbon\Carbon::parse($mistake->created_at)->format('d.m.Y') }}</td>
+                                                                <td class="px-4 py-2">{{ $mistake->inspectionConducted?->name }}</td>
+                                                                <td class="px-4 py-2">{{ $mistake->inspectionAdult?->name }}</td>
+                                                                <td class="px-4 py-2">{{ $mistake->prision_type?->name }}</td>
+                                                                <td class="px-4 py-2 text-center text-red-600">{{ $mistake->score ?? '' }}</td>
+                                                            </tr>
+                                                        @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+
                                     <table class="w-full text-sm rounded-lg mt-2">
                                         <thead class="text-gray-700 font-semibold">
                                         <tr>
@@ -294,18 +307,6 @@
                             </x-slot>
 
 
-                            <div class="grid grid-cols-2 gap-2">
-                                @foreach ($bonuses as $bonus)
-                                    <div class="justify-between flex mb-2">
-                                        <x-filament::badge>
-                                            {{ $bonus->name }}
-                                        </x-filament::badge>
-                                        <x-filament::badge>
-                                            + {{ $bonus->score }}
-                                        </x-filament::badge>
-                                    </div>
-                                @endforeach
-                            </div>
                         </x-filament::fieldset>
                     </div>
                 </div>
