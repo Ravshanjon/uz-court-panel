@@ -1,0 +1,10 @@
+vendor/
+node_modules/
+.env
+public/storage/
+storage/*.key
+storage/logs/
+storage/framework/
+bootstrap/cache/*.php
+config.zip
+"@ | Out-File -Encoding utf8 .gitignore
